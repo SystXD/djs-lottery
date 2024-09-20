@@ -6,40 +6,36 @@ import {
   APIEmbed,
   Message,
   Channel,
-  ActionRowBuilder,
-  ButtonBuilder,
+  Collection,
 } from "discord.js";
-import { EntryButton as DefaultButton, ManagerProps } from "./utils/helpers";
+import { GenerateEmbed, getWinner, ManagerProps } from "./utils/helpers";
 export class GiveawayConfig extends EventEmitter {
   private Client: Client;
-  public EmbedJSON: EmbedBuilder | APIEmbed;
-  private Map: Map<string, any>;
-  private EndedMap: Map<string, Message>;
-  private RunningMap: Map<string, Message>;
-  private PausedMap: Map<string, Message>;
-  public EntryButton: ActionRowBuilder<ButtonBuilder>;
-  constructor({ Client, EmbedJSON, EntryButton }: ManagerProps) {
+  public EmbedJSON?: EmbedBuilder | APIEmbed;
+  private Map: Collection<string, any>;
+  private RunningMap: Collection<string, Message>;
+  private PausedMap: Collection<string, Message>;
+  private EndedMap: Collection<string, Message>;
+  constructor({ Client }: ManagerProps) {
     super();
     this.Client = Client;
-    this.EmbedJSON = EmbedJSON;
-    this.Map = new Map();
-    this.EndedMap = new Map();
-    this.RunningMap = new Map();
-    this.PausedMap = new Map();
-    this.EntryButton = EntryButton ?? DefaultButton;
-   
+    this.Map = new Collection();
+    this.RunningMap = new Collection();
+    this.PausedMap = new Collection();
+    this.EndedMap = new Collection();
   }
 
-  public start(prize: string, channel: Channel, duration?: number) {
+  public start(prize: string, channel: Channel, duration: number) {
     return new Promise(async (res, rej) => {
       if (channel.isSendable())
         if (channel.isTextBased()) {
           const message = await channel.send({
-            embeds: [this.EmbedJSON],
-            components: [this.EntryButton],
+            embeds: [this.EmbedJSON ?? (await GenerateEmbed(prize, duration))],
           });
+          await message.react("🎉");
           this.RunningMap.set(message.id, message);
-          this.emit('giveawayOn', message, duration ?? 86_400_000)
+          res("[djs/lottery] The Giveaway has been started");
+          setTimeout(() => this.end(message.id), duration);
         } else
           rej(
             "[Error: djs/lottery] Unable to start giveaway on channel. Make sure I have appropriate permission."
@@ -60,20 +56,23 @@ export class GiveawayConfig extends EventEmitter {
             "[Error: djs/lottery] The specified channel have been deleted"
           );
         const message = await channel.messages.fetch(messageId);
+        const reactions = message.reactions.cache.get("🎉");
+        if (!reactions)
+          return rej("[Error: djs/lottery] No valid winners found");
         if (!message.embeds[0])
           return rej(
             "[Error: djs/lottery] Unable to locate embed attached to the giveaway"
           );
         EmbedBuilder.from(message.embeds[0]).setDescription(
-          `The winner was [Defaut User]`
+          `${await getWinner(reactions)}`
         );
         await message
-          .edit({ embeds: [message.embeds[0]] })
+          .edit({ embeds: [message.embeds[0]], components: [] })
           .catch((err) => rej(err));
-       
+        this.EndedMap.set(messageId, message);
+        res("[djs/lottery] The giveaway has been ended");
+        setTimeout(() => this.EndedMap.delete(messageId), 86_400_000);
       });
-     
-
     });
   }
 
@@ -102,9 +101,9 @@ export class GiveawayConfig extends EventEmitter {
           message ?? "The giveaway has been stopped"
         );
         await msg.edit({ embeds: [msg.embeds[0]] }).catch((err) => rej(err));
-        this.PausedMap.set(messageId, msg);
         this.RunningMap.delete(messageId);
-        res('[djs/lottery] The givewawy has been stopped temprorat')
+        this.PausedMap.set(messageId, msg);
+        res("[djs/lottery] The givewawy has been paused");
       });
     });
   }
