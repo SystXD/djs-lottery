@@ -13,16 +13,16 @@ export class GiveawayConfig extends EventEmitter {
   private Client: Client;
   public EmbedJSON?: EmbedBuilder | APIEmbed;
   private Map: Collection<string, any>;
-  private RunningMap: Collection<string, Message>;
-  private PausedMap: Collection<string, Message>;
-  private EndedMap: Collection<string, Message>;
+   #RunningMap: Collection<string, Message>;
+   #PausedMap: Collection<string, Message>;
+   #EndedMap: Collection<string, Message>;
   constructor({ Client }: ManagerProps) {
     super();
     this.Client = Client;
     this.Map = new Collection();
-    this.RunningMap = new Collection();
-    this.PausedMap = new Collection();
-    this.EndedMap = new Collection();
+    this.#RunningMap = new Collection();
+    this.#PausedMap = new Collection();
+    this.#EndedMap = new Collection();
   }
 
   public start(prize: string, channel: Channel, duration: number) {
@@ -33,7 +33,7 @@ export class GiveawayConfig extends EventEmitter {
             embeds: [this.EmbedJSON ?? (await GenerateEmbed(prize, duration))],
           });
           await message.react("🎉");
-          this.RunningMap.set(message.id, message);
+          this.#RunningMap.set(message.id, message);
           res("[djs/lottery] The Giveaway has been started");
           setTimeout(() => this.end(message.id), duration);
         } else
@@ -45,7 +45,7 @@ export class GiveawayConfig extends EventEmitter {
 
   public end(messageId: string) {
     return new Promise((res, rej) => {
-      const giveaway = this.RunningMap.get(messageId);
+      const giveaway = this.#RunningMap.get(messageId);
       if (!giveaway)
         return rej(
           `[Error: djs/lottery] Unable to locate any giveaway with Id ${messageId}`
@@ -69,9 +69,9 @@ export class GiveawayConfig extends EventEmitter {
         await message
           .edit({ embeds: [message.embeds[0]], components: [] })
           .catch((err) => rej(err));
-        this.EndedMap.set(messageId, message);
+        this.#EndedMap.set(messageId, message);
         res("[djs/lottery] The giveaway has been ended");
-        setTimeout(() => this.EndedMap.delete(messageId), 86_400_000);
+        setTimeout(() => this.#EndedMap.delete(messageId), 86_400_000);
       });
     });
   }
@@ -82,7 +82,7 @@ export class GiveawayConfig extends EventEmitter {
         rej(
           "[Error: djs/lottery] MessageId is required to execute the process."
         );
-      if (!this.RunningMap.get(messageId))
+      if (!this.#RunningMap.get(messageId))
         rej(
           `[Error: djs/lottery] No giveaways found for messageId: ${messageId}.`
         );
@@ -101,8 +101,8 @@ export class GiveawayConfig extends EventEmitter {
           message ?? "The giveaway has been stopped"
         );
         await msg.edit({ embeds: [msg.embeds[0]] }).catch((err) => rej(err));
-        this.RunningMap.delete(messageId);
-        this.PausedMap.set(messageId, msg);
+        this.#RunningMap.delete(messageId);
+        this.#PausedMap.set(messageId, msg);
         res("[djs/lottery] The givewawy has been paused");
       });
     });
@@ -110,7 +110,7 @@ export class GiveawayConfig extends EventEmitter {
 
   public reroll(messageId: string) {
     return new Promise((res, rej) => {
-      const giveaway = this.EndedMap.get(messageId) ?? undefined;
+      const giveaway = this.#EndedMap.get(messageId) ?? undefined;
       if (!giveaway)
         return rej(
           `[Error: djs/lottery] Unable to locate any giveaway with id ${messageId}`
