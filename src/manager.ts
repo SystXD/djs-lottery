@@ -107,4 +107,39 @@ export class GiveawayConfig extends EventEmitter {
       });
     });
   }
+
+  public reroll(messageId: string) {
+    return new Promise((res, rej) => {
+      const giveaway = this.EndedMap.get(messageId) ?? undefined;
+      if (!giveaway)
+        return rej(
+          `[Error: djs/lottery] Unable to locate any giveaway with id ${messageId}`
+        );
+      this.Client.channels
+        .fetch(giveaway.channelId)
+        .then((c) => {
+          if (!c)
+            return rej(`[Error: djs/lottery] Unable to locate any channel`);
+          if (!c.isSendable())
+            return rej(`[Error: djs/lottery] Please Inpute a valid channel Id`);
+          c.messages.fetch(messageId).then(async (msg) => {
+            if (!msg.embeds[0])
+              return rej(
+                "[Error: djs/lottery] Unable to locate any embed in giveaway"
+              );
+            const reactionKey = msg.reactions.cache.get("🎉");
+            if (!reactionKey)
+              return rej(
+                "[Error: djs/lottery] No valid winners found from reaction"
+              );
+            EmbedBuilder.from(msg.embeds[0]).setDescription(
+              `The winner is ${await getWinner(reactionKey)}`
+            );
+            await msg.edit({ embeds: [msg.embeds[0]] });
+            res(`[djs/lottery] Giveaway of id ${messageId} Has been rerolled`);
+          });
+        })
+        .catch((err) => rej(err));
+    });
+  }
 }
