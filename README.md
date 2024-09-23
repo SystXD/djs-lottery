@@ -47,7 +47,7 @@ client.on('messageCreate', (message) => {
 
 ## Rerolling Giveaway
 ```ts
-client.on('messageCreate, async (message) => {
+client.on('messageCreate', async (message) => {
   await client.giveaway.reroll('messageId').catch((_err) => /**logic**/)
   // [NOTE: The giveaways are currently saved in map only for 24 hours]
 })
