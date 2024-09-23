@@ -1,4 +1,8 @@
 {
+  "name": "djs.lottery",
+  "version": "1.1.0",
+  "main": "dist/index",
+  "homepage": "https://github.com/SystXD/djs-lottery",
   "devDependencies": {
     "@types/node": "^22.5.5"
   },

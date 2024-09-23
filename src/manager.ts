@@ -73,7 +73,7 @@ export class GiveawayConfig extends EventEmitter {
           .edit({
             embeds: [
               EmbedBuilder.from(message.embeds[0]).setDescription(
-                `The winner of the giveaway is ${await getWinner(reactions)}`
+                `**Winner:** ${await getWinner(reactions)}`
               ),
             ],
             components: [],
@@ -86,7 +86,7 @@ export class GiveawayConfig extends EventEmitter {
     });
   }
 
-  public stop(messageId: string, message?: string) {
+  public pause(messageId: string, message?: string) {
     return new Promise((res, rej) => {
       if (!messageId)
         rej(

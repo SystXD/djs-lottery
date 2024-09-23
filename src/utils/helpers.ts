@@ -33,7 +33,7 @@ export const GenerateEmbed = async (prize: string, duration: number): Promise<Em
     fields: [
       {
         name: "End At",
-        value: `<:t${
+        value: `<t:${
           Math.floor(Date.now() / 1000) + Math.floor(duration / 1000)
         }:R>`,
       },
