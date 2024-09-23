@@ -40,7 +40,7 @@ client.on('messageCreate', (message) => {
 ### Pausing Giveaway
 
 ```typescript
-  client.on('messageCreate, async (message) => {
+  client.on('messageCreate', async (message) => {
     await client.giveaway.pause('messageId', 'message(optional)').catch((_err) => /**logic**/)
   })
 ```
