@@ -13,9 +13,9 @@ export class GiveawayConfig extends EventEmitter {
   private Client: Client;
   public EmbedJSON?: EmbedBuilder | APIEmbed;
   private Map: Collection<string, any>;
-   #RunningMap: Collection<string, Message>;
-   #PausedMap: Collection<string, Message>;
-   #EndedMap: Collection<string, Message>;
+  #RunningMap: Collection<string, Message>;
+  #PausedMap: Collection<string, Message>;
+  #EndedMap: Collection<string, Message>;
   constructor({ Client }: ManagerProps) {
     super();
     this.Client = Client;
@@ -25,12 +25,17 @@ export class GiveawayConfig extends EventEmitter {
     this.#EndedMap = new Collection();
   }
 
-  public start(prize: string, channel: Channel, duration: number) {
+  public start(
+    prize: string,
+    channel: Channel,
+    duration: number,
+    embed?: APIEmbed | EmbedBuilder
+  ) {
     return new Promise(async (res, rej) => {
       if (channel.isSendable())
         if (channel.isTextBased()) {
           const message = await channel.send({
-            embeds: [this.EmbedJSON ?? (await GenerateEmbed(prize, duration))],
+            embeds: [embed ?? (await GenerateEmbed(prize, duration))],
           });
           await message.react("🎉");
           this.#RunningMap.set(message.id, message);
@@ -63,14 +68,19 @@ export class GiveawayConfig extends EventEmitter {
           return rej(
             "[Error: djs/lottery] Unable to locate embed attached to the giveaway"
           );
-        EmbedBuilder.from(message.embeds[0]).setDescription(
-          `${await getWinner(reactions)}`
-        );
+
         await message
-          .edit({ embeds: [message.embeds[0]], components: [] })
+          .edit({
+            embeds: [
+              EmbedBuilder.from(message.embeds[0]).setDescription(
+                `The winner of the giveaway is ${await getWinner(reactions)}`
+              ),
+            ],
+            components: [],
+          })
           .catch((err) => rej(err));
         this.#EndedMap.set(messageId, message);
-        res("[djs/lottery] The giveaway has been ended");
+        res(message);
         setTimeout(() => this.#EndedMap.delete(messageId), 86_400_000);
       });
     });
@@ -97,10 +107,16 @@ export class GiveawayConfig extends EventEmitter {
           console.warn(
             `[Warn: djs/lottery] The embed attached to message have been deleted, Couldn't update It.`
           );
-        EmbedBuilder.from(msg.embeds[0]).setDescription(
-          message ?? "The giveaway has been stopped"
-        );
-        await msg.edit({ embeds: [msg.embeds[0]] }).catch((err) => rej(err));
+
+        await msg
+          .edit({
+            embeds: [
+              EmbedBuilder.from(msg.embeds[0]).setDescription(
+                message ?? "The giveaway has been stopped"
+              ),
+            ],
+          })
+          .catch((err) => rej(err));
         this.#RunningMap.delete(messageId);
         this.#PausedMap.set(messageId, msg);
         res("[djs/lottery] The givewawy has been paused");
@@ -132,14 +148,36 @@ export class GiveawayConfig extends EventEmitter {
               return rej(
                 "[Error: djs/lottery] No valid winners found from reaction"
               );
-            EmbedBuilder.from(msg.embeds[0]).setDescription(
-              `The winner is ${await getWinner(reactionKey)}`
-            );
-            await msg.edit({ embeds: [msg.embeds[0]] });
+
+            await msg.edit({
+              embeds: [
+                EmbedBuilder.from(msg.embeds[0]).setDescription(
+                  `The winner is ${await getWinner(reactionKey)}`
+                ),
+              ],
+            });
             res(`[djs/lottery] Giveaway of id ${messageId} Has been rerolled`);
           });
         })
         .catch((err) => rej(err));
+    });
+  }
+
+  public fetchGiveaway(messageId: string) {
+    return new Promise(async (res, rej) => {
+      const giveaway =
+        this.#RunningMap.get(messageId) ??
+        this.#PausedMap.get(messageId) ??
+        this.#EndedMap.get(messageId) ??
+        null;
+      if (!giveaway)
+        return rej(
+          `[Error: djs/lottery] Unable to locate any giveaway with Id ${messageId}`
+        );
+      return res({
+        users: [...giveaway.reactions.cache.values()],
+        ended: this.#RunningMap.get(messageId) ? true : false,
+      });
     });
   }
 }

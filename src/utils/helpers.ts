@@ -25,17 +25,24 @@ export const EntryButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
     .setStyle(ButtonStyle.Premium)
 );
 
-export const GenerateEmbed = async (prize:string, duration:number) => {
-  const { default:prettyMs } = await import('pretty-ms')
-  return new EmbedBuilder({ 
-        color: 0xFFFFFF,
-        title: prize,
-        description: `The event will end in ${prettyMs(duration)}`
-   })
-}
+export const GenerateEmbed = async (prize: string, duration: number): Promise<EmbedBuilder> => {
+  return new EmbedBuilder({
+    color: 0xffffff,
+    title: prize,
+    description: `**Prize: ${prize}**`,
+    fields: [
+      {
+        name: "End At",
+        value: `<:t${
+          Math.floor(Date.now() / 1000) + Math.floor(duration / 1000)
+        }:R>`,
+      },
+    ],
+  });
+};
 
 export const getWinner = async (reaction: MessageReaction) => {
- if (!reaction || reaction.users.cache.size <= 0) return 'Invalid winner'
+  if (!reaction || reaction.users.cache.size <= 0) return "Invalid winner";
   const users = [...(await reaction.users.fetch()).values()];
   return users[Math.floor(Math.random() * users.length)];
 };
